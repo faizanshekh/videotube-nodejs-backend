@@ -1,6 +1,5 @@
 import mongoose, {isValidObjectId} from "mongoose"
 import {Video} from "../models/video.model.js"
-import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
@@ -14,7 +13,51 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description} = req.body
+
     // TODO: get video, upload to cloudinary, create video
+
+    // Get video details from frontend
+    // validation - not empty
+    // check for videoFile and thumbnail 
+    // upload them to cloudinary
+    // create video object - create entry in db
+    // check for video creation
+    // return res
+
+    if([title, description].some((field) => field?.trim() === "")) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const videoLocalPath = req.files?.videoFile[0]?.path;
+    
+    let thumbnailLocalPath;
+
+    if (req.files && Array.isArray(req.files.thumbnail) && req.files.thumbnail.length > 0) {
+        thumbnailLocalPath = req.files.thumbnail[0].path
+    }
+
+    if (!videoLocalPath) {
+        throw new ApiError(400, "Video file is required")
+    }
+
+    const videoFile = await uploadOnCloudinary(videoLocalPath)
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if(!videoFile){
+        throw new ApiError(400, "Video File is required")
+    }
+
+    const video = Video.create({
+        title,
+        description,
+        videoFile : videoFile.url,
+        thumbnail: thumbnail?.url || "",
+        duration: videoFile?.duration || 0,
+    });
+
+    const videoResponse = new ApiResponse(201, "Video published successfully", video);
+
+    return res.status(videoResponse.statusCode).json(videoResponse)
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
